@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Rolle {
+  BOLIGEIER
+  MEGLER
+  FOTOGRAF
+  TAKSTMANN
+}
+
+enum MarkedspakkeType {
+  HELDIGITAL
+  MEGLERDIGITAL
+}
+
+enum BoligStatus {
+  UTKAST
+  VURDERES_SOLGT
+  TIL_SALGS
+  SOLGT
+  TRUKKET
+}
+
+enum OppdragStatus {
+  NY
+  TAKST_BESTILT
+  TAKST_LEVERT
+  FOTO_BESTILT
+  FOTO_LEVERT
+  AI_GENERERT
+  PUBLISERT
+  AVSLUTTET
+}
+
+enum FotoStatus {
+  VENTER
+  OPPLASTET
+  GODKJENT
+}
+
+model Bruker {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  fornavn   String
+  etternavn String
+  telefon   String?
+  rolle     Rolle
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  boliger            Bolig[]          @relation("Eier")
+  meglerBoliger      Bolig[]          @relation("Megler")
+  oppdragSomMegler   Markedsoppdrag[] @relation("MeglerOppdrag")
+  oppdragSomFotograf Markedsoppdrag[] @relation("FotografOppdrag")
+  oppdragSomTakst    Markedsoppdrag[] @relation("TakstOppdrag")
+
+  @@index([clerkId])
+  @@index([rolle])
+}
+
+model Bolig {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  status      BoligStatus @default(UTKAST)
+
+  gate        String
+  nummer      String
+  postnummer  String
+  poststed    String
+  kommune     String
+
+  boligtype   String
+  bruksareal  Int?
+  tomteareal  Int?
+  byggeaar    Int?
+  soverom     Int?
+  antallRom   Int?
+  etasje      Int?
+
+  prisantydning   Int?
+  fellesgjeld     Int?
+  fellesutgifter  Int?
+
+  kortBeskrivelse     String?  @db.Text
+  langBeskrivelse     String?  @db.Text
+  nabolagsBeskrivelse String?  @db.Text
+
+  eier     Bruker  @relation("Eier", fields: [eierId], references: [id])
+  eierId   String
+  megler   Bruker? @relation("Megler", fields: [meglerId], references: [id])
+  meglerId String?
+
+  bilder  Bilde[]
+  oppdrag Markedsoppdrag?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([kommune])
+  @@index([postnummer])
+  @@index([eierId])
+}
+
+model Bilde {
+  id         String     @id @default(cuid())
+  boligId    String
+  bolig      Bolig      @relation(fields: [boligId], references: [id], onDelete: Cascade)
+  url        String
+  key        String     @unique
+  altTekst   String?
+  rekkefølge Int        @default(0)
+  status     FotoStatus @default(VENTER)
+  createdAt  DateTime   @default(now())
+
+  @@index([boligId])
+}
+
+model Markedsoppdrag {
+  id      String           @id @default(cuid())
+  boligId String           @unique
+  bolig   Bolig            @relation(fields: [boligId], references: [id], onDelete: Cascade)
+  pakke   MarkedspakkeType
+  status  OppdragStatus    @default(NY)
+
+  megler      Bruker? @relation("MeglerOppdrag", fields: [meglerId], references: [id])
+  meglerId    String?
+  fotograf    Bruker? @relation("FotografOppdrag", fields: [fotografId], references: [id])
+  fotografId  String?
+  takstmann   Bruker? @relation("TakstOppdrag", fields: [takstmannId], references: [id])
+  takstmannId String?
+
+  takstverdi      Int?
+  takstRapportUrl String?
+  takstLevertAt   DateTime?
+  fotoBookingAt   DateTime?
+  fotoLevertAt    DateTime?
+  aiGenerertAt    DateTime?
+  publisertAt     DateTime?
+  notater         String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([fotografId])
+  @@index([takstmannId])
+}
+
+model Nabovarsel {
+  id         String   @id @default(cuid())
+  email      String
+  navn       String?
+  kommune    String
+  område     String?
+  postnummer String?
+  aktiv      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@unique([email, kommune, område])
+  @@index([kommune])
+  @@index([postnummer])
+}
