@@ -1,9 +1,10 @@
-import { requireBruker } from "@/lib/auth";
+import { syncClerkBruker, requireBruker } from "@/lib/auth";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { MobileNav } from "@/components/layout/MobileNav";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  await syncClerkBruker();
   const bruker = await requireBruker();
 
   return (
